@@ -1,0 +1,272 @@
+* Complete o SPICE
+* Projete a porta logica XOR2 (!a*b)+(a*!b)
+* Crie o ambiente de simulacao
+
+.include ptm45nmhp.l
+.options method=gear
+
+.param Wnmos = 100n
+.param Wpmos = 150n
+.param Ltran = 50n
+.param supply = 1V
+
+V1 VDD 0 DC 1V
+V2 VDD2 0 DC 1V
+
+*A000	0000    1000    0000
+*A001	0001    1001    0001
+*A010	0010    1010    0010
+*A011	0011    1011    0011
+*A100	0100    1100    0100
+*A101	0101    1101    0101
+*A110	0110    1110    0110
+*A111	0111    1111    0111
+
+
+VinA pulsoInA 0 PWL(0ns 0 1ns 0 1.0001ns {supply} 2ns {supply} 2.0001ns 0
++ 3ns 0 4ns 0 4.0001ns {supply} 5ns {supply} 5.0001ns 0
++ 6ns 0 6.0001ns 0 7ns 0 7.0001ns {supply} 8ns {supply} 8.0001ns 0
++ 10ns 0 10.0001ns {supply} 11ns {supply} 11.0001ns 0
++ 13ns 0 13.0001ns {supply} 14ns {supply} 14.0001ns 0
++ 16ns 0 16.0001ns {supply} 17ns {supply} 17.0001ns 0
++ 19ns 0 19.0001ns {supply} 20ns {supply} 20.0001ns 0
++ 22ns 0 22.0001ns {supply} 23ns {supply} 23.0001ns 0 24ns 0)
+VinB pulsoInB 0 PWL(0ns 0 12ns 0 12.0001ns {supply} 24ns {supply})
+VinC pulsoInC 0 PWL(0ns 0 6ns 0 6.0001ns {supply} 12ns {supply} 12.0001ns 0 18ns 0 18.0001ns {supply} 23ns {supply})
+VinD pulsoinD 0 PWL(0ns 0 3ns 0 3.0001ns {supply} 6ns {supply} 6.0001ns 0 9ns 0 9.0001ns {supply} 12ns {supply} 12.0001ns 0 15ns 0 15.0001ns {supply} 18ns {supply} 18.0001ns 0 21ns 0 21.0001ns {supply})
+
+*0B00	0000    0100    0000
+*0B01	0001    0101    0001
+*0B10	0010    0110    0010
+*0B11	0011    0111    0011
+*1B00	1000    1100    1000
+*1B01	1001    1101    1001
+*1B10	1010    1110    1010
+*1B11	1011    1111    1011
+*
+*VinB pulsoInB 0 PWL(
+*
+*)
+*
+*00C0	0000    0010    0000
+*00C1	0001    0011    0001
+*01C0	0100    0110    0100
+*01C1	0101    0111    0101
+*10C0	1000    1010    1000
+*10C1	1001    1011    1001
+*11C0	1100    1110    1100
+*11C1	1101    1111    1101
+*
+*000D	0000    0001    0000
+*001D	0010    0011    0010
+*010D	0100    0101    0100
+*011D	0110    0111    0110
+*100D	1000    1001    1000
+*101D	1010    1011    1010
+*110D	1100    1101    1100
+*111D	1110    1111    1110
+*
+*
+*
+*
+*VinC pulsoInC 0	PWL
+*VinD pulsoInD 0	PWL
+*
+*A0 -> 00 10 00
+
+*A1 -> 01 11 01
+
+*0B -> 00 01 00
+
+*1B -> 10 11 10
+
+
+.SUBCKT inverter a out VDD GND
+*.PININFO a:I out:O VDD:P GND:G
+*.EQN out=!a;
+MP1 out a VDD VDD PMOS L={Ltran} W={Wpmos}
+MN2 out a GND GND NMOS L={Ltran} W={Wnmos}
+.ENDS inverter
+
+.subckt inputDelay a out VDD GND
+Xinv1 a n1 VDD GND inverter
+Xinv2 n1 out VDD GND inverter
+.ends inputDelay
+
+.SUBCKT F1 a b c d not_out GCC GND
+*.PININFO a:I b:I c:I d:I not_out:O GCC:P GND:G
+*.EQN not_out=!(!a + !d + !b + !c);
+MP1 out a GCC GCC PMOS L={Ltran} W={Wpmos}
+MP2 out d GCC GCC PMOS L={Ltran} W={Wpmos}
+MP3 out b GCC GCC PMOS L={Ltran} W={Wpmos}
+MP4 out c GCC GCC PMOS L={Ltran} W={Wpmos}
+MN5 pd_n1 a GND GND NMOS L={Ltran} W={Wnmos * 4}
+MN6 pd_n3 d pd_n1 GND NMOS L={Ltran} W={Wnmos * 4}
+MN7 pd_n5 b pd_n3 GND NMOS L={Ltran} W={Wnmos * 4}
+MN8 out c pd_n5 GND NMOS L={Ltran} W={Wnmos * 4}
+MP_inv9 not_out out GCC GCC PMOS L={Ltran} W={Wpmos}
+MN_inv10 not_out out GND GND NMOS L={Ltran} W={Wnmos * 4}
+.ENDS F1
+
+.SUBCKT F2 a b c out GCC GND
+*.PININFO a:I b:I c:I out:O GCC:P GND:G
+*.EQN out=((a * ((!b * c) + (!c * b))) + (!a * ((!b * !c) + (b * c))));
+MP1 pu_n1 b GCC GCC PMOS L={Ltran} W={Wpmos}
+MP2 pu_n9 not_c pu_n1 GCC PMOS L={Ltran} W={Wpmos}
+MP3 pu_n5 c GCC GCC PMOS L={Ltran} W={Wpmos}
+MP4 pu_n9 not_b pu_n5 GCC PMOS L={Ltran} W={Wpmos}
+MP5 out not_a pu_n9 GCC PMOS L={Ltran} W={Wpmos}
+MP6 pu_n13 a GCC GCC PMOS L={Ltran} W={Wpmos}
+MP7 pu_n15 b pu_n13 GCC PMOS L={Ltran} W={Wpmos}
+MP8 out c pu_n15 GCC PMOS L={Ltran} W={Wpmos}
+MP9 pu_n19 not_b pu_n13 GCC PMOS L={Ltran} W={Wpmos}
+MP10 out not_c pu_n19 GCC PMOS L={Ltran} W={Wpmos}
+MN11 pd_n5 b GND GND NMOS L={Ltran} W={Wnmos}
+MN12 pd_n5 not_c GND GND NMOS L={Ltran} W={Wnmos}
+MN13 pd_n15 c pd_n5 GND NMOS L={Ltran} W={Wnmos}
+MN14 pd_n15 not_b pd_n5 GND NMOS L={Ltran} W={Wnmos}
+MN15 pd_n15 not_a GND GND NMOS L={Ltran} W={Wnmos}
+MN16 out a pd_n15 GND NMOS L={Ltran} W={Wnmos}
+MN17 pd_n23 b pd_n15 GND NMOS L={Ltran} W={Wnmos}
+MN18 pd_n23 c pd_n15 GND NMOS L={Ltran} W={Wnmos}
+MN19 out not_b pd_n23 GND NMOS L={Ltran} W={Wnmos}
+MN20 out not_c pd_n23 GND NMOS L={Ltran} W={Wnmos}
+MP_inv21 not_a a GCC GCC PMOS L={Ltran} W={Wnmos}
+MN_inv22 not_a a GND GND NMOS L={Ltran} W={Wnmos}
+MP_inv23 not_b b GCC GCC PMOS L={Ltran} W={Wnmos}
+MN_inv24 not_b b GND GND NMOS L={Ltran} W={Wnmos}
+MP_inv25 not_c c GCC GCC PMOS L={Ltran} W={Wnmos}
+MN_inv26 not_c c GND GND NMOS L={Ltran} W={Wnmos}
+.ENDS F2
+
+.SUBCKT F3 a b c d not_out GCC GND
+*.PININFO a:I b:I c:I d:I not_out:O GCC:P GND:G
+*.EQN not_out=!((b + ((a + c) * (!a + !c))) * (!b + ((a + !c) * (!a + (c * !d)))));
+MP1 pu_n15 not_b GCC GCC PMOS L={Ltran} W={Wpmos}
+MP2 pu_n7 not_a GCC GCC PMOS L={Ltran} W={Wpmos}
+MP3 pu_n7 not_c GCC GCC PMOS L={Ltran} W={Wpmos}
+MP4 pu_n15 a pu_n7 GCC PMOS L={Ltran} W={Wpmos}
+MP5 pu_n15 c pu_n7 GCC PMOS L={Ltran} W={Wpmos}
+MP6 pu_n21 not_a pu_n15 GCC PMOS L={Ltran} W={Wpmos}
+MP7 pu_n21 c pu_n15 GCC PMOS L={Ltran} W={Wpmos}
+MP8 pu_n23 not_c pu_n21 GCC PMOS L={Ltran} W={Wpmos}
+MP9 out d pu_n23 GCC PMOS L={Ltran} W={Wpmos}
+MP10 out a pu_n21 GCC PMOS L={Ltran} W={Wpmos}
+MP11 out b pu_n15 GCC PMOS L={Ltran} W={Wpmos}
+MN12 pd_n1 not_b GND GND NMOS L={Ltran} W={Wnmos}
+MN13 pd_n3 not_a pd_n1 GND NMOS L={Ltran} W={Wnmos}
+MN14 out not_c pd_n3 GND NMOS L={Ltran} W={Wnmos}
+MN15 pd_n7 a pd_n1 GND NMOS L={Ltran} W={Wnmos}
+MN16 out c pd_n7 GND NMOS L={Ltran} W={Wnmos}
+MN17 pd_n13 not_a GND GND NMOS L={Ltran} W={Wnmos}
+MN18 pd_n25 c pd_n13 GND NMOS L={Ltran} W={Wnmos}
+MN19 pd_n21 not_c GND GND NMOS L={Ltran} W={Wnmos}
+MN20 pd_n21 d GND GND NMOS L={Ltran} W={Wnmos}
+MN21 pd_n25 a pd_n21 GND NMOS L={Ltran} W={Wnmos}
+MN22 out b pd_n25 GND NMOS L={Ltran} W={Wnmos}
+MP_inv23 not_a a GCC GCC PMOS L={Ltran} W={Wpmos}
+MN_inv24 not_a a GND GND NMOS L={Ltran} W={Wnmos}
+MP_inv25 not_b b GCC GCC PMOS L={Ltran} W={Wpmos}
+MN_inv26 not_b b GND GND NMOS L={Ltran} W={Wnmos}
+MP_inv27 not_c c GCC GCC PMOS L={Ltran} W={Wpmos}
+MN_inv28 not_c c GND GND NMOS L={Ltran} W={Wnmos}
+MP_inv29 not_out out GCC GCC PMOS L={Ltran} W={Wpmos}
+MN_inv30 not_out out GND GND NMOS L={Ltran} W={Wnmos}
+.ENDS F3
+
+
+
+* Crie e faca as instancias dos buffers de entrada
+
+* Instancie o DUT (design under test), neste caso a XOR2
+
+* Coloque o FO4 na saida do DUT
+
+.subckt FO4 a out VDD GND
+Xinv1 a out VDD GND inverter
+Xinv2 a out VDD GND inverter
+Xinv3 a out VDD GND inverter
+Xinv4 a out VDD GND inverter
+.ends FO4
+
+
+*XDelay1 pulsoInA inA VDD2 GND inputDelay
+*XDelay2 pulsoInB inB VDD2 GND inputDelay
+
+*XXOR2 inA inB out VDD GND XOR2
+
+*XFO4 out out2 VDD2 GND FO4
+
+
+* Verifique se o tempo de simulacao e suficiente
+.tran 1p 24ns
+
+* Measures Atraso
+* A0
+*.measure tran atraso_A0_LH
+*+ trig v(inA) val={supply}/2 rise = 1
+*+ targ v(out) val={supply}/2 rise = 1
+*
+*.measure tran atraso_A0_HL
+*+ trig v(inA) val={supply}/2 fall = 1
+*+ targ v(out) val={supply}/2 fall = 1
+*
+** A1
+*.measure tran atraso_A1_LH
+*+ trig v(inA) val={supply}/2 rise = 2
+*+ targ v(out) val={supply}/2 fall = 2
+*
+*.measure tran atraso_A1_HL
+*+ trig v(inA) val={supply}/2 fall = 2
+*+ targ v(out) val={supply}/2 rise = 3
+*
+** 0B
+*.measure tran atraso_0B_LH
+*+ trig v(inB) val={supply}/2 rise = 2
+*+ targ v(out) val={supply}/2 rise = 4
+*
+*.measure tran atraso_0B_HL
+*+ trig v(inB) val={supply}/2 fall = 2
+*+ targ v(out) val={supply}/2 fall = 4
+*
+** 1B
+*.measure tran atraso_1B_LH
+*+ trig v(inB) val={supply}/2 rise = 3
+*+ targ v(out) val={supply}/2 fall = 5
+*
+*.measure tran atraso_1B_HL
+*+ trig v(inB) val={supply}/2 fall = 3
+*+ targ v(out) val={supply}/2 rise = 6
+
+
+* Measures de potencia
+* Consumo dinamico
+* P = V * I de toda a simulacao
+
+*.measure tran consumo_Medio AVG(i(V1)*-v(VDD)) from=0ns to=13ns
+*
+** Consumo estatico
+** P = V * I no momento em que o circuito esta estavel
+*
+** A0
+*.measure tran consumo_Estatico_A0_LH AVG(i(V1)*-v(VDD)) from=0.97ns to=1.03ns
+*.measure tran consumo_Estatico_A0_HL AVG(i(V1)*-v(VDD)) from=1.97ns to=2.03ns
+*
+** A1
+*.measure tran consumo_Estatico_A1_LH AVG(i(V1)*-v(VDD)) from=3.97ns to=4.03ns
+*.measure tran consumo_Estatico_A1_HL AVG(i(V1)*-v(VDD)) from=4.97ns to=5.03ns
+*
+** 0B
+*.measure tran consumo_Estatico_0B_LH AVG(i(V1)*-v(VDD)) from=6.97ns to=7.03ns
+*.measure tran consumo_Estatico_0B_HL AVG(i(V1)*-v(VDD)) from=7.97ns to=8.03ns
+*
+** 1B
+*.measure tran consumo_Estatico_1B_LH AVG(i(V1)*-v(VDD)) from=9.97ns to=10.03ns
+*.measure tran consumo_Estatico_1B_HL AVG(i(V1)*-v(VDD)) from=10.97ns to=11.03ns
+*
+*
+**atraso_a0_lh=2.39766e-011 FROM 1.01549e-009 TO 1.03947e-009
+**atraso_a0_hl=2.15756e-011 FROM 2.01444e-009 TO 2.03602e-009
+**atraso_a1_lh=2.061e-011 FROM 4.0
+
+.ends
